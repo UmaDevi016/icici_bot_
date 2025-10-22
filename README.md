@@ -8,11 +8,14 @@ A sophisticated AI chatbot trained specifically on ICICI Insurance documentation
 
 ## 🌟 Features
 
-- ✅ **PDF Processing**: Extracts and processes ICICI Insurance documentation (200 chunks)
+- ✅ **Dual Source Training**: Combines PDF documentation + Live ICICI website content
+- ✅ **Web Scraping**: Automatically scrapes latest info from iciciprulife.com
+- ✅ **PDF Processing**: Extracts and processes ICICI Insurance documentation
 - ✅ **Vector Embeddings**: Uses Sentence Transformers for semantic search
 - ✅ **RAG Architecture**: Retrieves relevant context for accurate responses
 - ✅ **Conversational Memory**: Maintains context across conversation
 - ✅ **SQLite Database**: Persistent storage of chat history
+- ✅ **Source Attribution**: Shows whether info comes from PDF or website
 - ✅ **Modern UI**: Beautiful, responsive web interface
 - ✅ **FastAPI Backend**: High-performance RESTful API
 - ✅ **Session Management**: Track and manage user conversations
@@ -75,6 +78,7 @@ bot/
 ├── main.py                  # FastAPI application
 ├── chatbot.py               # RAG chatbot implementation
 ├── pdf_processor.py         # PDF extraction and chunking
+├── web_scraper.py           # ICICI website scraper (NEW!)
 ├── database.py              # SQLite database operations
 ├── requirements.txt         # Python dependencies
 ├── start_server.bat         # Server launcher (Windows)
@@ -88,8 +92,9 @@ bot/
 │   └── script.js           # Interactive functionality
 │
 └── Generated Files (runtime):
-    ├── chunks.pkl          # Processed PDF chunks
+    ├── chunks.pkl          # Processed PDF + Web chunks
     ├── embeddings.pkl      # Vector embeddings
+    ├── web_content.txt     # Scraped web content (optional)
     └── conversations.db    # Chat history database
 ```
 
@@ -102,16 +107,21 @@ bot/
 - **Database**: SQLite3
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **PDF Processing**: PyPDF2
+- **Web Scraping**: BeautifulSoup4, Requests
 - **Vector Search**: Scikit-learn (cosine similarity)
 
 ### How It Works
 
-1. **PDF Processing**: Document is split into 200 chunks with overlap
-2. **Embedding Creation**: Each chunk is converted to a 384-dimensional vector
-3. **Query Processing**: User question is embedded using the same model
-4. **Retrieval**: Top-5 most similar chunks are retrieved (cosine similarity)
-5. **Response Generation**: Relevant chunks are used to formulate the answer
-6. **Context Management**: Previous conversations inform current responses
+1. **Dual Content Collection**: 
+   - PDF is processed into ~150 chunks
+   - ICICI website is scraped for ~50 additional chunks
+2. **Source Tagging**: Each chunk is tagged with [PDF] or [WEB] prefix
+3. **Embedding Creation**: All chunks are converted to 384-dimensional vectors
+4. **Query Processing**: User question is embedded using the same model
+5. **Retrieval**: Top-5 most similar chunks are retrieved (cosine similarity)
+6. **Response Generation**: Relevant chunks are combined to formulate answer
+7. **Source Attribution**: Response includes source information (PDF/Website)
+8. **Context Management**: Previous conversations inform current responses
 
 ## 📊 Performance
 
@@ -167,12 +177,15 @@ This project uses standard Python libraries and open-source models.
 **✅ FULLY COMPLETED AND TESTED**
 
 All requirements successfully implemented:
-- ✅ PDF processing (200 chunks)
-- ✅ Vector embeddings
+- ✅ PDF processing (150 chunks)
+- ✅ Website scraping (50 chunks from iciciprulife.com)
+- ✅ Dual source integration (PDF + Web)
+- ✅ Vector embeddings with source tagging
 - ✅ Conversation context
 - ✅ Database integration
 - ✅ FastAPI backend
 - ✅ Modern frontend
+- ✅ Source attribution in responses
 - ✅ Clean code structure
 
 ---

@@ -6,9 +6,11 @@ import pickle
 import os
 from pdf_processor import PDFProcessor
 from database import ConversationDB
+from web_scraper import ICICIWebScraper
 
 class ICICIInsuranceChatbot:
-    def __init__(self, pdf_path: str = "ICICI_Insurance.pdf", model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, pdf_path: str = "ICICI_Insurance.pdf", model_name: str = "all-MiniLM-L6-v2", 
+                 use_web_content: bool = True, max_pdf_chunks: int = 150, max_web_pages: int = 10):
         self.pdf_path = pdf_path
         self.model = SentenceTransformer(model_name)
         self.chunks = []
@@ -16,6 +18,9 @@ class ICICIInsuranceChatbot:
         self.db = ConversationDB()
         self.embeddings_file = "embeddings.pkl"
         self.chunks_file = "chunks.pkl"
+        self.use_web_content = use_web_content
+        self.max_pdf_chunks = max_pdf_chunks
+        self.max_web_pages = max_web_pages
         
         # Load or create embeddings
         self.load_or_create_embeddings()
@@ -30,21 +35,55 @@ class ICICIInsuranceChatbot:
             self.create_embeddings()
     
     def create_embeddings(self):
-        """Process PDF and create embeddings"""
-        # Process PDF
-        processor = PDFProcessor(self.pdf_path, max_chunks=200)
-        self.chunks = processor.process_pdf()
+        """Process PDF and web content, then create embeddings"""
+        all_chunks = []
         
-        if not self.chunks:
-            raise Exception("No chunks created from PDF")
+        # Process PDF
+        print(f"Processing PDF (max {self.max_pdf_chunks} chunks)...")
+        processor = PDFProcessor(self.pdf_path, max_chunks=self.max_pdf_chunks)
+        pdf_chunks = processor.process_pdf()
+        
+        if pdf_chunks:
+            # Add source tag to PDF chunks
+            pdf_chunks = [f"[PDF] {chunk}" for chunk in pdf_chunks]
+            all_chunks.extend(pdf_chunks)
+            print(f"Added {len(pdf_chunks)} chunks from PDF")
+        
+        # Scrape and process web content
+        if self.use_web_content:
+            print(f"Scraping ICICI website (max {self.max_web_pages} pages)...")
+            try:
+                scraper = ICICIWebScraper(max_pages=self.max_web_pages)
+                scraper.scrape_important_pages()
+                web_chunks = scraper.create_chunks_from_web_content()
+                
+                if web_chunks:
+                    # Limit web chunks to maintain total around 200
+                    remaining_capacity = 200 - len(all_chunks)
+                    web_chunks = web_chunks[:remaining_capacity]
+                    
+                    # Add source tag to web chunks
+                    web_chunks = [f"[WEB] {chunk}" for chunk in web_chunks]
+                    all_chunks.extend(web_chunks)
+                    print(f"Added {len(web_chunks)} chunks from website")
+            except Exception as e:
+                print(f"Warning: Could not scrape web content: {e}")
+                print("Continuing with PDF content only...")
+        
+        if not all_chunks:
+            raise Exception("No chunks created from any source")
+        
+        self.chunks = all_chunks
         
         # Create embeddings
-        print("Creating embeddings for chunks...")
+        print(f"Creating embeddings for {len(self.chunks)} total chunks...")
         self.embeddings = self.model.encode(self.chunks)
         
         # Save embeddings and chunks
         self.save_embeddings()
-        print(f"Created embeddings for {len(self.chunks)} chunks")
+        print(f"✅ Successfully created embeddings for {len(self.chunks)} chunks")
+        print(f"   - PDF chunks: {len([c for c in self.chunks if c.startswith('[PDF]')])}")
+        print(f"   - Web chunks: {len([c for c in self.chunks if c.startswith('[WEB]')])}")
     
     def save_embeddings(self):
         """Save embeddings and chunks to files"""
@@ -91,18 +130,38 @@ class ICICIInsuranceChatbot:
                          conversation_context: str = "") -> str:
         """Generate response based on relevant chunks and context"""
         # Filter chunks with similarity above threshold
-        filtered_chunks = [chunk for chunk, score in relevant_chunks if score > 0.3]
+        filtered_chunks = [(chunk, score) for chunk, score in relevant_chunks if score > 0.3]
         
         if not filtered_chunks:
             return ("I apologize, but I couldn't find relevant information in the ICICI Insurance "
-                   "documentation to answer your question. Could you please rephrase your question "
+                   "documentation and website to answer your question. Could you please rephrase your question "
                    "or ask about specific ICICI Insurance products or services?")
         
+        # Separate sources
+        sources = []
+        clean_chunks = []
+        
+        for chunk, score in filtered_chunks[:3]:
+            if chunk.startswith('[PDF]'):
+                sources.append('PDF')
+                clean_chunks.append(chunk.replace('[PDF] ', ''))
+            elif chunk.startswith('[WEB]'):
+                sources.append('Website')
+                clean_chunks.append(chunk.replace('[WEB] ', ''))
+            else:
+                clean_chunks.append(chunk)
+        
         # Create context from relevant chunks
-        context = "\n\n".join(filtered_chunks[:3])  # Use top 3 chunks
+        context = "\n\n".join(clean_chunks[:3])
         
         # Simple response generation based on context
         response = self.create_contextual_response(query, context, conversation_context)
+        
+        # Add source information if available
+        unique_sources = list(set(sources))
+        if unique_sources:
+            source_text = " and ".join(unique_sources)
+            response += f"\n\n📚 Source: {source_text}"
         
         return response
     
