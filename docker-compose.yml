@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  chatbot:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./conversations.db:/app/conversations.db
+      - ./chunks.pkl:/app/chunks.pkl
+      - ./embeddings.pkl:/app/embeddings.pkl
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

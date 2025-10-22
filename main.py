@@ -104,11 +104,18 @@ async def shutdown_event():
         print("Cleanup completed")
 
 if __name__ == "__main__":
-    print("Starting ICICI Insurance Chatbot Server...")
+    import os
+    
+    # Detect environment
+    env = os.getenv("ENV", "development")
+    port = int(os.getenv("PORT", 8000))
+    
+    print(f"Starting ICICI Insurance Chatbot Server in {env} mode...")
+    
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=(env == "development"),  # Only reload in development
         log_level="info"
     )
