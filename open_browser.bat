@@ -1,0 +1,3 @@
+@echo off
+echo Opening ICICI Insurance Chatbot...
+start http://localhost:8888
